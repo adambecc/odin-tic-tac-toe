@@ -1,14 +1,11 @@
 const Game = (function () {
-    // Player Factory
+    
     const Player = (mark) => {
-        return {
-            mark, // The player's symbol (X or O)
-        };
+        return { mark };
     };
 
-    // Gameboard Factory
     const Gameboard = () => {
-        const board = Array(9).fill(null); // 3x3 board
+        const board = Array(9).fill(null);
 
         return {
             board,
@@ -19,27 +16,18 @@ const Game = (function () {
                 }
                 return false;
             },
-            displayBoard() {
-                console.log(`
-                ${this.board[0] || " "} | ${this.board[1] || " "} | ${this.board[2] || " "}
-                ---------
-                ${this.board[3] || " "} | ${this.board[4] || " "} | ${this.board[5] || " "}
-                ---------
-                ${this.board[6] || " "} | ${this.board[7] || " "} | ${this.board[8] || " "}
-                `);
-            },
             resetBoard() {
                 this.board.fill(null);
+                document.querySelectorAll('.cell').forEach(cell => (cell.textContent = ""));
             },
             checkWinner() {
                 const winningCombinations = [
-                    [0, 1, 2], [3, 4, 5], [6, 7, 8],  // rows
-                    [0, 3, 6], [1, 4, 7], [2, 5, 8],  // columns
-                    [0, 4, 8], [2, 4, 6]               // diagonals
+                    [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                    [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                    [0, 4, 8], [2, 4, 6]
                 ];
 
-                for (const combination of winningCombinations) {
-                    const [a, b, c] = combination;
+                for (const [a, b, c] of winningCombinations) {
                     if (this.board[a] && this.board[a] === this.board[b] && this.board[a] === this.board[c]) {
                         return this.board[a];
                     }
@@ -52,48 +40,71 @@ const Game = (function () {
         };
     };
 
-    // Game Controller Factory
     const GameController = () => {
         const player1 = Player("X");
         const player2 = Player("O");
+        let playerXscore = 0;
+        let playerOscore = 0;
         let currentPlayer = player1;
         const gameboard = Gameboard();
+        const messageDisplay = document.getElementById("message");
+
+        const updateScoreDisplay = () => {
+            document.getElementById("playerX-score").textContent = `Player X Score: ${playerXscore}`;
+            document.getElementById("playerO-score").textContent = `Player O Score: ${playerOscore}`;
+        };
 
         const switchPlayer = () => {
             currentPlayer = currentPlayer === player1 ? player2 : player1;
         };
 
-        const playGame = () => {
-            gameboard.resetBoard();
-            let winner = null;
+        const handleClick = (event) => {
+            const cellId = parseInt(event.target.id.replace("cell-", ""));
+            
+            if (gameboard.placeMark(cellId, currentPlayer.mark)) {
+                event.target.textContent = currentPlayer.mark;
 
-            while (!winner && !gameboard.isBoardFull()) {
-                gameboard.displayBoard();
-                let position = parseInt(prompt(`Player ${currentPlayer.mark}, enter your move (0-8):`));
-
-                if (isNaN(position) || position < 0 || position > 8 || !gameboard.placeMark(position, currentPlayer.mark)) {
-                    console.log("Invalid move. Try again.");
-                    continue;
-                }
-
-                winner = gameboard.checkWinner();
+                const winner = gameboard.checkWinner();
                 if (winner) {
-                    gameboard.displayBoard();
-                    console.log(`Player ${winner} wins!`);
-                    break;
+                    messageDisplay.textContent = `Player ${winner} wins!`;
+                    
+                    if (winner === player1.mark) playerXscore++;
+                    else playerOscore++;
+                    
+                    updateScoreDisplay();
+                    disableBoard();
+                } else if (gameboard.isBoardFull()) {
+                    messageDisplay.textContent = "It's a draw!";
+                } else {
+                    switchPlayer();
+                    messageDisplay.textContent = `Player ${currentPlayer.mark}'s turn`;
                 }
-
-                switchPlayer(); // Switch turns
-            }
-
-            if (!winner) {
-                gameboard.displayBoard();
-                console.log("It's a draw!");
             }
         };
 
+        const disableBoard = () => {
+            document.querySelectorAll('.cell').forEach(cell => cell.removeEventListener('click', handleClick));
+        };
+
+        const initializeGame = () => {
+            gameboard.resetBoard();
+            currentPlayer = player1;
+            messageDisplay.textContent = `Player ${currentPlayer.mark}'s turn`;
+
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.addEventListener('click', handleClick);
+            });
+        };
+
+        const resetScores = () => {
+            playerXscore = 0;
+            playerOscore = 0;
+            updateScoreDisplay();
+        };
+
         return {
-            playGame,
+            initializeGame,
+            resetScores,
         };
     };
 
@@ -102,6 +113,11 @@ const Game = (function () {
     };
 })();
 
-// Start the game
 const game = Game.GameController();
-game.playGame();
+game.initializeGame();
+
+const gameResetButton = document.getElementById("reset-button");
+gameResetButton.addEventListener("click", () => game.initializeGame());
+
+const scoreResetButton = document.getElementById("reset-score");
+scoreResetButton.addEventListener("click", () => game.resetScores());
